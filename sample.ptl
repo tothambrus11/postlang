@@ -1,0 +1,27 @@
+
+paragraph{
+  "Lorem ipsum dolor sit amet, consectetur \"hello world\" adipisicing elit. Eius, quibusdam."
+}
+
+video(src-source="https://youtube.com/watch?v=dwjfwkfwekf", type="youtube")
+
+br br
+
+list(type="numbers"){
+    [
+        video(asd="10" bsd="20")
+        list(type="dots"){
+            [
+                paragraph{"Hello world 1"}paragraph{"Hello world"}
+            ]
+        }
+    ]
+}
+
+hr
+
+info-box{
+  "Something \"is this ok?\"<b>super</b> <i>nice</i> info"
+}
+
+hr
