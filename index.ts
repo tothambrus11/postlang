@@ -1,4 +1,4 @@
-/*import * as fs from "fs";
+import * as fs from "fs";
 import * as util from "util";
 
 console.clear();
@@ -9,10 +9,12 @@ fs.readFile("deutsch.ptl", (err, data) => {
     }
     let text = data.toString();
 
-    parseCode(text).forEach(value => {
+    lex(text).forEach(value => {
         console.log(util.inspect(value, false, null, true));
     })
-});*/
+});
+
+// todo két ugyanolyan string egymás után
 
 export interface Lexeme {
     type: LexemeType,
@@ -23,10 +25,12 @@ export interface Lexeme {
 
 
 export interface Component {
-    componentName: string;
-    attributes: { [key: string]: string };
+    componentName?: string;
+    attributes: Attributes;
     content: Content
 }
+
+export type Attributes = { [key: string]: any }
 
 export interface CodePosition {
     column: number;
@@ -50,10 +54,13 @@ export enum LexemeType {
  * It makes something out of sh1t
  * @param code
  */
-export function lex(code: string) {
+export function lex(code: string): Lexeme[] {
+    code += " ";
+
     let lexemes: Lexeme[] = [];
 
     let strings = getStringsInText(code);
+    console.log(strings);
     let lineCount = 1;
     let columnCount = 0;
     for (let i = 0; i < code.length; i++) {
@@ -64,7 +71,7 @@ export function lex(code: string) {
             lineCount++;
             columnCount = 0;
         } else if (c === '"') {
-            if (code.indexOf(strings[0]) == i) {
+            if (code.substring(i).indexOf(strings[0]) == 0) {
                 lexemes.push({
                     type: LexemeType.string,
                     content: strings[0],
@@ -195,7 +202,7 @@ export function lex(code: string) {
                 }
             }
 
-            if(!attributeEnd){
+            if (!attributeEnd) {
                 throw new Error("Parser error, [attributeEnd] not found");
             }
             let attributeName = code.substring(attributeStart, attributeEnd);
@@ -210,6 +217,12 @@ export function lex(code: string) {
         }
 
     }
+
+    lexemes.forEach(lexeme => {
+        if (lexeme.type === LexemeType.string) {
+            lexeme.content = lexeme.content.substring(1, lexeme.content.length - 1);
+        }
+    });
 
     return lexemes;
 }
@@ -230,11 +243,14 @@ export function parse(lexemes: Lexeme[]): Component[] {
     return componentTree;
 }
 
-export function parseCode(code: string) {
+export function parseCode(code: string): Component[] {
     return parse(lex(code));
 }
 
-export type Content = string | Component | Content[];
+export type Content = string | Component | ContentArray;
+
+export interface ContentArray extends Array<Content> {
+};
 
 export function parseContent(i: number, lexemes: Lexeme[]): { content: Content, i: number } {
     let content: Content;
@@ -270,7 +286,7 @@ export function parseContent(i: number, lexemes: Lexeme[]): { content: Content, 
                 content = {
                     componentName,
                     attributes,
-                    content: cucc.content
+                    content: cucc.content || null
                 };
                 i = cucc.i + 1; // + 1 stands for the closing curly brace.
             } else {
@@ -287,7 +303,7 @@ export function parseContent(i: number, lexemes: Lexeme[]): { content: Content, 
             content = {
                 attributes: {},
                 componentName: componentName,
-                content: cucc.content
+                content: cucc.content || null
             }
         } else { // Nincs content, nincs attribútum
             content = {

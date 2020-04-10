@@ -1,6 +1,6 @@
 {
   "name": "postlang",
-  "version": "1.0.0",
+  "version": "1.0.10",
   "description": "This is a new, component based markup language. It can be converted into HTML. Currently, the package only contains the parser, so anyone can write their own renderer.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

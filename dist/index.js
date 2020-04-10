@@ -1,20 +1,18 @@
 "use strict";
-/*import * as fs from "fs";
-import * as util from "util";
-
+exports.__esModule = true;
+var fs = require("fs");
+var util = require("util");
 console.clear();
 console.log("==============================================================================================");
-fs.readFile("deutsch.ptl", (err, data) => {
+fs.readFile("deutsch.ptl", function (err, data) {
     if (err) {
         throw err;
     }
-    let text = data.toString();
-
-    parseCode(text).forEach(value => {
+    var text = data.toString();
+    lex(text).forEach(function (value) {
         console.log(util.inspect(value, false, null, true));
-    })
-});*/
-exports.__esModule = true;
+    });
+});
 var LexemeType;
 (function (LexemeType) {
     LexemeType[LexemeType["string"] = 0] = "string";
@@ -33,6 +31,7 @@ var LexemeType;
  * @param code
  */
 function lex(code) {
+    code += " ";
     var lexemes = [];
     var strings = getStringsInText(code);
     var lineCount = 1;
@@ -198,6 +197,11 @@ function lex(code) {
             });
         }
     }
+    lexemes.forEach(function (lexeme) {
+        if (lexeme.type === LexemeType.string) {
+            lexeme.content = lexeme.content.substring(1, lexeme.content.length - 1);
+        }
+    });
     return lexemes;
 }
 exports.lex = lex;
@@ -220,6 +224,7 @@ function parseCode(code) {
     return parse(lex(code));
 }
 exports.parseCode = parseCode;
+;
 function parseContent(i, lexemes) {
     var content;
     if (lexemes[i].type == LexemeType.string) { // A content egy string
@@ -254,7 +259,7 @@ function parseContent(i, lexemes) {
                 content = {
                     componentName: componentName,
                     attributes: attributes,
-                    content: cucc.content
+                    content: cucc.content || null
                 };
                 i = cucc.i + 1; // + 1 stands for the closing curly brace.
             }
@@ -273,7 +278,7 @@ function parseContent(i, lexemes) {
             content = {
                 attributes: {},
                 componentName: componentName,
-                content: cucc.content
+                content: cucc.content || null
             };
         }
         else { // Nincs content, nincs attribútum

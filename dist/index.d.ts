@@ -5,12 +5,13 @@ export interface Lexeme {
     endPos?: CodePosition;
 }
 export interface Component {
-    componentName: string;
-    attributes: {
-        [key: string]: string;
-    };
+    componentName?: string;
+    attributes: Attributes;
     content: Content;
 }
+export declare type Attributes = {
+    [key: string]: any;
+};
 export interface CodePosition {
     column: number;
     line: number;
@@ -38,7 +39,9 @@ export declare function lex(code: string): Lexeme[];
  */
 export declare function parse(lexemes: Lexeme[]): Component[];
 export declare function parseCode(code: string): Component[];
-export declare type Content = string | Component | Content[];
+export declare type Content = string | Component | ContentArray;
+export interface ContentArray extends Array<Content> {
+}
 export declare function parseContent(i: number, lexemes: Lexeme[]): {
     content: Content;
     i: number;
