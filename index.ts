@@ -1,7 +1,19 @@
+/*import * as fs from "fs";
+import * as util from "util";
 
+console.clear();
+console.log("==============================================================================================");
+fs.readFile("deutsch.ptl", (err, data) => {
+    if (err) {
+        throw err;
+    }
+    let text = data.toString();
 
+    parseCode(text).forEach(value => {
+        console.log(util.inspect(value, false, null, true));
+    })
+});*/
 
-// todo két ugyanolyan string egymás után
 
 export interface Lexeme {
     type: LexemeType,
@@ -10,6 +22,9 @@ export interface Lexeme {
     endPos?: CodePosition;
 }
 
+function unescapeString(text: string): string {
+    return text.replace(/\\"/g, '"');
+}
 
 export interface Component {
     componentName?: string;
@@ -83,6 +98,10 @@ export function lex(code: string): Lexeme[] {
             let endPos = i;
             while (true) {
                 endPos--;
+                if (endPos < 0) {
+                    throw new Error("Component name not found");
+                }
+
                 if (!code[endPos].match(/\s/)) { // Ha már nem whitespace
                     if (!code[endPos].match(/\w/)) {
                         throw new Error(`Invalid component name near ${lineCount}:${columnCount}`);
@@ -94,6 +113,7 @@ export function lex(code: string): Lexeme[] {
             let startPos = endPos;
             while (startPos > 0) {
                 startPos--;
+
                 if (code[startPos].match(/[^\w-]/)) {
                     startPos++;
                     break;
@@ -117,6 +137,9 @@ export function lex(code: string): Lexeme[] {
             let endPos = i;
             while (true) {
                 endPos--;
+                if (endPos < 0) {
+                    throw new Error("Component name not found")
+                }
                 if (!code[endPos].match(/\s/)) { // Ha már nem whitespace
                     if (code[endPos] == ")") {
                         foundAttributes = true;
@@ -135,7 +158,8 @@ export function lex(code: string): Lexeme[] {
                 let startPos = endPos;
                 while (startPos > 0) {
                     startPos--;
-                    if (code[startPos].match(/[^\w-(,]/)) {
+
+                    if (code[startPos].match(/[^\w-]/)) { // ez volt itt, de wtf:     if (code[startPos].match(/[^\w-(,]/)) {
                         startPos++;
                         break;
                     }
@@ -173,6 +197,11 @@ export function lex(code: string): Lexeme[] {
             let attributeStart: number;
             let attributeEnd: number;
 
+
+            if (i < 1) {
+                throw new Error("Not expected equal sign")
+            }
+            // TODO ERROR HANDLING
             for (let ic = i - 1; ic >= 0; ic--) {
                 if (code[ic].match(/[\w-]/g)) {
                     if (!attributeEnd) {
@@ -189,7 +218,10 @@ export function lex(code: string): Lexeme[] {
             }
 
             if (!attributeEnd) {
-                throw new Error("Parser error, [attributeEnd] not found");
+                throw new Error("Attribute end not found");
+            }
+            if (!attributeStart) {
+                throw new Error("Attribute start not found");
             }
             let attributeName = code.substring(attributeStart, attributeEnd);
             lexemes.push({
@@ -206,7 +238,7 @@ export function lex(code: string): Lexeme[] {
 
     lexemes.forEach(lexeme => {
         if (lexeme.type === LexemeType.string) {
-            lexeme.content = lexeme.content.substring(1, lexeme.content.length - 1);
+            lexeme.content = lexeme.content.substring(1, lexeme.content.length - 1).replace(/\\"/g, '"');
         }
     });
 
@@ -223,8 +255,6 @@ export function parse(lexemes: Lexeme[]): Component[] {
         const cucc = parseContent(i, lexemes);
         componentTree.push(cucc.content as Component);
         i = cucc.i;
-        "s";
-
     }
     return componentTree;
 }
@@ -236,11 +266,14 @@ export function parseCode(code: string): Component[] {
 export type Content = string | Component | ContentArray;
 
 export interface ContentArray extends Array<Content> {
-};
+}
 
 export function parseContent(i: number, lexemes: Lexeme[]): { content: Content, i: number } {
     let content: Content;
 
+    if (!lexemes[i]) {
+        throw new Error("Invalid content");
+    }
     if (lexemes[i].type == LexemeType.string) { // A content egy string
         content = lexemes[i].content;
         i++;
@@ -261,10 +294,13 @@ export function parseContent(i: number, lexemes: Lexeme[]): { content: Content, 
                     throw new Error(`lexemes[${i + 1}] was expected to be an equal sign.`) // TODO code pos
                 }
                 if (lexemes[i + 2].type != LexemeType.string) {
-                    throw new Error(`lexemes[${i + 2}] was expected to be a string`) // TODO code pos
+                    throw new Error(`Attribute value must be a string`) // TODO code pos
                 }
                 attributes[lexemes[i].content as string] = lexemes[i + 2].content as string;
                 i += 3;
+                if (i >= lexemes.length) {
+                    throw new Error("Missing closing curly brace")
+                }
             }
             if (lexemes[i] && lexemes[i].type == LexemeType.openingCurlyBrace) { // Van content
                 i++;
@@ -275,6 +311,9 @@ export function parseContent(i: number, lexemes: Lexeme[]): { content: Content, 
                     content: cucc.content || null
                 };
                 i = cucc.i + 1; // + 1 stands for the closing curly brace.
+                if (!lexemes[cucc.i] || lexemes[cucc.i].type !== LexemeType.closingCurlyBrace) { // todo test
+                    throw new Error("Missing closing curly brace");
+                }
             } else {
                 content = {
                     componentName,
@@ -286,6 +325,9 @@ export function parseContent(i: number, lexemes: Lexeme[]): { content: Content, 
             let componentName = lexemes[i].content;
             let cucc = parseContent(i + 2, lexemes);
             i = cucc.i + 1; // + 1 stands for the closing curly brace.
+            if (!lexemes[cucc.i] || lexemes[cucc.i].type !== LexemeType.closingCurlyBrace) {
+                throw new Error("Missing closing curly brace")
+            }
             content = {
                 attributes: {},
                 componentName: componentName,
@@ -306,11 +348,14 @@ export function parseContent(i: number, lexemes: Lexeme[]): { content: Content, 
             if (lexemes[i].type == LexemeType.closingSquareBracket) {
                 i++;
                 break;
+            } else if(lexemes[i].type == LexemeType.string || lexemes[i].type == LexemeType.openingSquareBracket || lexemes[i].type == LexemeType.componentName){
+                let cucc = parseContent(i, lexemes);
+                i = cucc.i;
+                content.push(cucc.content);
             }
-
-            let cucc = parseContent(i, lexemes);
-            i = cucc.i;
-            content.push(cucc.content);
+            else{
+                throw new Error("Missing closing square bracket");
+            }
         }
     }
     return {content, i};

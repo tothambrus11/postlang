@@ -1,22 +1,26 @@
 {
   "name": "postlang",
-  "version": "1.0.12",
   "description": "This is a new, component based markup language. It can be converted into HTML. Currently, the package only contains the parser, so anyone can write their own renderer.",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "start": "ts-node index.ts",
-    "serve": "tsc-watch index.ts --outDir ./dist --onSuccess \"node ./dist/index.js\" --declaration",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": ["post", "language", "blog", "components"],
-  "author": "Ambrus Tóth",
-  "license": "ISC",
   "devDependencies": {
     "@types/node": "^13.9.5",
     "ts-node": "^8.8.1",
     "tsc": "^1.20150623.0",
     "tsc-watch": "^4.2.3",
     "typescript": "^3.8.3"
-  }
+  },
+  "keywords": [
+    "post",
+    "language",
+    "blog",
+    "components"
+  ],
+  "license": "ISC",
+  "main": "dist/index.js",
+  "scripts": {
+    "serve": "tsc-watch index.ts --outDir ./dist --onSuccess \"node ./dist/index.js\" --declaration",
+    "start": "ts-node index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "types": "dist/index.d.ts",
+  "version": "1.0.24"
 }

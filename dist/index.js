@@ -1,18 +1,23 @@
 "use strict";
-exports.__esModule = true;
-var fs = require("fs");
-var util = require("util");
+/*import * as fs from "fs";
+import * as util from "util";
+
 console.clear();
 console.log("==============================================================================================");
-fs.readFile("deutsch.ptl", function (err, data) {
+fs.readFile("deutsch.ptl", (err, data) => {
     if (err) {
         throw err;
     }
-    var text = data.toString();
-    lex(text).forEach(function (value) {
+    let text = data.toString();
+
+    parseCode(text).forEach(value => {
         console.log(util.inspect(value, false, null, true));
-    });
-});
+    })
+});*/
+exports.__esModule = true;
+function unescapeString(text) {
+    return text.replace(/\\"/g, '"');
+}
 var LexemeType;
 (function (LexemeType) {
     LexemeType[LexemeType["string"] = 0] = "string";
@@ -44,7 +49,7 @@ function lex(code) {
             columnCount = 0;
         }
         else if (c === '"') {
-            if (code.indexOf(strings[0]) == i) {
+            if (code.substring(i).indexOf(strings[0]) == 0) {
                 lexemes.push({
                     type: LexemeType.string,
                     content: strings[0],
@@ -73,6 +78,9 @@ function lex(code) {
             var endPos = i;
             while (true) {
                 endPos--;
+                if (endPos < 0) {
+                    throw new Error("Component name not found");
+                }
                 if (!code[endPos].match(/\s/)) { // Ha már nem whitespace
                     if (!code[endPos].match(/\w/)) {
                         throw new Error("Invalid component name near " + lineCount + ":" + columnCount);
@@ -109,6 +117,9 @@ function lex(code) {
             var endPos = i;
             while (true) {
                 endPos--;
+                if (endPos < 0) {
+                    throw new Error("Component name not found");
+                }
                 if (!code[endPos].match(/\s/)) { // Ha már nem whitespace
                     if (code[endPos] == ")") {
                         foundAttributes = true;
@@ -128,7 +139,7 @@ function lex(code) {
                 var startPos = endPos;
                 while (startPos > 0) {
                     startPos--;
-                    if (code[startPos].match(/[^\w-(,]/)) {
+                    if (code[startPos].match(/[^\w-]/)) { // ez volt itt, de wtf:     if (code[startPos].match(/[^\w-(,]/)) {
                         startPos++;
                         break;
                     }
@@ -167,6 +178,10 @@ function lex(code) {
         else if (c == "=") {
             var attributeStart = void 0;
             var attributeEnd = void 0;
+            if (i < 1) {
+                throw new Error("Not expected equal sign");
+            }
+            // TODO ERROR HANDLING
             for (var ic = i - 1; ic >= 0; ic--) {
                 if (code[ic].match(/[\w-]/g)) {
                     if (!attributeEnd) {
@@ -184,7 +199,10 @@ function lex(code) {
                 }
             }
             if (!attributeEnd) {
-                throw new Error("Parser error, [attributeEnd] not found");
+                throw new Error("Attribute end not found");
+            }
+            if (!attributeStart) {
+                throw new Error("Attribute start not found");
             }
             var attributeName = code.substring(attributeStart, attributeEnd);
             lexemes.push({
@@ -199,7 +217,7 @@ function lex(code) {
     }
     lexemes.forEach(function (lexeme) {
         if (lexeme.type === LexemeType.string) {
-            lexeme.content = lexeme.content.substring(1, lexeme.content.length - 1);
+            lexeme.content = lexeme.content.substring(1, lexeme.content.length - 1).replace(/\\"/g, '"');
         }
     });
     return lexemes;
@@ -215,7 +233,6 @@ function parse(lexemes) {
         var cucc = parseContent(i, lexemes);
         componentTree.push(cucc.content);
         i = cucc.i;
-        "s";
     }
     return componentTree;
 }
@@ -224,9 +241,11 @@ function parseCode(code) {
     return parse(lex(code));
 }
 exports.parseCode = parseCode;
-;
 function parseContent(i, lexemes) {
     var content;
+    if (!lexemes[i]) {
+        throw new Error("Invalid content");
+    }
     if (lexemes[i].type == LexemeType.string) { // A content egy string
         content = lexemes[i].content;
         i++;
@@ -248,10 +267,13 @@ function parseContent(i, lexemes) {
                     throw new Error("lexemes[" + (i + 1) + "] was expected to be an equal sign."); // TODO code pos
                 }
                 if (lexemes[i + 2].type != LexemeType.string) {
-                    throw new Error("lexemes[" + (i + 2) + "] was expected to be a string"); // TODO code pos
+                    throw new Error("Attribute value must be a string"); // TODO code pos
                 }
                 attributes[lexemes[i].content] = lexemes[i + 2].content;
                 i += 3;
+                if (i >= lexemes.length) {
+                    throw new Error("Missing closing curly brace");
+                }
             }
             if (lexemes[i] && lexemes[i].type == LexemeType.openingCurlyBrace) { // Van content
                 i++;
@@ -262,6 +284,9 @@ function parseContent(i, lexemes) {
                     content: cucc.content || null
                 };
                 i = cucc.i + 1; // + 1 stands for the closing curly brace.
+                if (!lexemes[cucc.i] || lexemes[cucc.i].type !== LexemeType.closingCurlyBrace) { // todo test
+                    throw new Error("Missing closing curly brace");
+                }
             }
             else {
                 content = {
@@ -275,6 +300,9 @@ function parseContent(i, lexemes) {
             var componentName = lexemes[i].content;
             var cucc = parseContent(i + 2, lexemes);
             i = cucc.i + 1; // + 1 stands for the closing curly brace.
+            if (!lexemes[cucc.i] || lexemes[cucc.i].type !== LexemeType.closingCurlyBrace) {
+                throw new Error("Missing closing curly brace");
+            }
             content = {
                 attributes: {},
                 componentName: componentName,
@@ -298,9 +326,14 @@ function parseContent(i, lexemes) {
                 i++;
                 break;
             }
-            var cucc = parseContent(i, lexemes);
-            i = cucc.i;
-            content.push(cucc.content);
+            else if (lexemes[i].type == LexemeType.string || lexemes[i].type == LexemeType.openingSquareBracket || lexemes[i].type == LexemeType.componentName) {
+                var cucc = parseContent(i, lexemes);
+                i = cucc.i;
+                content.push(cucc.content);
+            }
+            else {
+                throw new Error("Missing closing square bracket");
+            }
         }
     }
     return { content: content, i: i };
