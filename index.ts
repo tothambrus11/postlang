@@ -1,18 +1,5 @@
-import * as fs from "fs";
-import * as util from "util";
 
-console.clear();
-console.log("==============================================================================================");
-fs.readFile("deutsch.ptl", (err, data) => {
-    if (err) {
-        throw err;
-    }
-    let text = data.toString();
 
-    lex(text).forEach(value => {
-        console.log(util.inspect(value, false, null, true));
-    })
-});
 
 // todo két ugyanolyan string egymás után
 
@@ -60,7 +47,6 @@ export function lex(code: string): Lexeme[] {
     let lexemes: Lexeme[] = [];
 
     let strings = getStringsInText(code);
-    console.log(strings);
     let lineCount = 1;
     let columnCount = 0;
     for (let i = 0; i < code.length; i++) {
